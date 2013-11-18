@@ -21,5 +21,8 @@
 		}
 	});
 	
+	socket.emit('message', 'Hello server', "cat");
 	
 })();
+
+

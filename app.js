@@ -35,19 +35,13 @@ app.get( '/*' , function( req, res, next ) {
 
 var sio = io.listen(server);
 var clients = {length: 0};
-	//Configure the socket.io connection settings.
-	//See http://socket.io/
+
 sio.configure(function (){
-
 	sio.set('log level', 0);
-
 	sio.set('authorization', function (handshakeData, callback) {
 	  callback(null, true); // error first callback style
 	});
-
 });
-
-
 
 sio.sockets.on('connection', function (client) {
 	console.log("Someone got connected: ");
@@ -57,9 +51,9 @@ sio.sockets.on('connection', function (client) {
 	clients[client.UUID] = client;
 	
 	if(clients.length > 0){
-		role = 'c' /** I'm not the fist client, so i'm not the host, I'm a client */
+		role = 'c'; /** I'm not the fist client, so i'm not the host, I'm a client */
 	}else{
-		role = 'h' /** There is no other client in the game, so I'm the host */
+		role = 'h'; /** There is no other client in the game, so I'm the host */
 	}
 	
 	clients.length++;
@@ -69,5 +63,10 @@ sio.sockets.on('connection', function (client) {
 	/** i: init
 	 *  h: host */
 	client.emit('onmessage', ['ig',role])
+	
+	client.on("message", function(msg, from){
+		console.log('I received a message by ', from, ' saying ', msg);
+	});
 })
+
 
