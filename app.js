@@ -58,14 +58,19 @@ sio.sockets.on('connection', function (client) {
 	
 	clients.length++;
 	
-	client.emit('onconnected', { id: client.userid } );
+	client.emit('onconnected', { 
+		player: { 
+			UUID: client.userid,
+			pos: {
+				x: Math.floor(Math.random() * 200),
+				y: Math.floor(Math.random() * 200)
+			}
+		}
+	});
 	
-	/** i: init
-	 *  h: host */
-	client.emit('onmessage', ['ig',role])
-	
-	client.on("message", function(msg, from){
-		console.log('I received a message by ', from, ' saying ', msg);
+	client.on("sendInput", function(data){
+		console.log('inputSended', data);
+		sio.sockets.emit("inputRecivied", data);
 	});
 })
 
