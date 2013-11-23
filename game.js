@@ -27,38 +27,56 @@ var Game = function(settings){
 	});
 	
 	socket.on('onconnected', function(data){
-		console.log("Player created: ", data)
+		this.players = {};
+		for(var p in data.players){
+			this.players[data.players[p].UUID] = new Player(data.players[p]);
+		} 
 		this.players[data.player.UUID] = new Player(data.player);
-		this.me = data.player;
+		this.me = this.players[data.player.UUID];
+		console.log(this.players);
 	}.bind(this));
 	
-	socket.on('inputRecivied', this.inputRecivied );
-	socket.on('addPlayer', this.addPlayer);
+	socket.on('inputRecivied', this.inputRecivied.bind(this) );
+	socket.on('addPlayer', this.addPlayer.bind(this));
 	
-	window.addEventListener("keypress", this.onKeyPress.bind(this))
+	window.addEventListener("keypress", this.onKeyPress.bind(this));
 }
 
-Game.prototype.addPlayer = function(data){
-	this.players[data.player.UUID] = data.player;
+Game.prototype.addPlayer = function(player){
+	console.log("Player connected: ", player);
+	this.players[player.UUID] = new Player(player);
 } 
 
-Game.prototype.inputRecivied = function(data){
-	console.log('inputRecivied', data);
+Game.prototype.inputRecivied = function(playerUUID, eventType, eventData){
+	var p = this.players[playerUUID];
+	if(eventData == 119) p.pos.y -= 1; //UP
+	if(eventData == 115) p.pos.y += 1; //DOWN
+	if(eventData == 97) p.pos.x -= 1;  //LEFT
+	if(eventData == 100) p.pos.x += 1; //RIGHT
 }
 
-Game.prototype.sendInput = function(data){
-	this.socket.emit('sendInput', data);
+Game.prototype.sendInput = function(playerUUID, eventType, eventData){
+	this.socket.emit('sendInput', playerUUID, eventType, eventData);
 }
 
 Game.prototype.onKeyPress = function(e){
-	this.sendInput(this.player.UUID, "keypress", e.keyCode);
+	this.sendInput(this.me.UUID, "keypress", e.keyCode);
 }
 
 Game.prototype.loop = null;
 Game.prototype.loop = function(){
-	this.ctx.clearRect(0, 0, this.world.width, this.world.height)
-	.rect(this.pos.x, this.pos.y, this.width, this.height);
-	requestAnimationFrame(this.loop);
+	this.ctx.fillStyle="#FFF";
+	this.ctx.fillRect(0, 0, this.world.width, this.world.height);
+	this.ctx.fillStyle="#FF0000";
+	for(var i in this.players){
+		this.ctx.fillRect(
+			this.players[i].pos.x,
+			this.players[i].pos.y,
+			this.players[i].width,
+			this.players[i].height
+		);
+	}
+	requestAnimationFrame(this.loop.bind(this));
 }
 
 var game = null;
@@ -69,4 +87,5 @@ function init(){
 	game = new Game({
 		viewport: viewport
 	});
+	game.loop();
 }

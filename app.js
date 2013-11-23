@@ -34,7 +34,7 @@ app.get( '/*' , function( req, res, next ) {
 
 
 var sio = io.listen(server);
-var clients = {length: 0};
+var players = {};
 
 sio.configure(function (){
 	sio.set('log level', 0);
@@ -45,32 +45,27 @@ sio.configure(function (){
 
 sio.sockets.on('connection', function (client) {
 	console.log("Someone got connected: ");
-
-	client.UUID = UUID();
 	
-	clients[client.UUID] = client;
-	
-	if(clients.length > 0){
-		role = 'c'; /** I'm not the fist client, so i'm not the host, I'm a client */
-	}else{
-		role = 'h'; /** There is no other client in the game, so I'm the host */
+	var p = { 
+		UUID: UUID(),
+		pos: {
+			x: Math.floor(Math.random() * 200),
+			y: Math.floor(Math.random() * 200)
+		}
 	}
 	
-	clients.length++;
+	players[p.UUID] = p;
 	
 	client.emit('onconnected', { 
-		player: { 
-			UUID: client.userid,
-			pos: {
-				x: Math.floor(Math.random() * 200),
-				y: Math.floor(Math.random() * 200)
-			}
-		}
+		player: p,
+		players: players
 	});
 	
-	client.on("sendInput", function(data){
-		console.log('inputSended', data);
-		sio.sockets.emit("inputRecivied", data);
+	client.broadcast.emit("addPlayer", p);
+	
+	client.on("sendInput", function(playerUUID, eventType, eventData){
+		console.log('inputSended', playerUUID, eventType, eventData);
+		sio.sockets.emit("inputRecivied", playerUUID, eventType, eventData);
 	});
 })
 
