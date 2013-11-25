@@ -10,6 +10,7 @@ var
 	app				= express(),
 	server			= http.createServer(app);
 	
+	require('./game.js');
 
 server.listen(gameport)
 
@@ -17,7 +18,6 @@ app.get( '/', function( req, res ){
 	console.log('trying to load %s', __dirname + '/index.html');
 	res.sendfile( '/index.html' , { root:__dirname });
 });
-
 
 app.get( '/*' , function( req, res, next ) {
 
@@ -32,9 +32,9 @@ app.get( '/*' , function( req, res, next ) {
 
 }); //app.get *
 
-
 var sio = io.listen(server);
-var players = {};
+
+var game = new Game();
 
 sio.configure(function (){
 	sio.set('log level', 0);
@@ -43,30 +43,51 @@ sio.configure(function (){
 	});
 });
 
+
+/**
+ * Cuando un cliente pega en el servidor por primera vez*/
 sio.sockets.on('connection', function (client) {
-	console.log("Someone got connected: ");
 	
+	/** Abstraccion de jugador. Uno por cliente */
 	var p = { 
-		UUID: UUID(),
+		/** Identificador */
+		id: client.id,
+		/** La posicion se determina en el servidor y se informa al cliente */
 		pos: {
 			x: Math.floor(Math.random() * 200),
 			y: Math.floor(Math.random() * 200)
 		}
 	}
 	
-	players[p.UUID] = p;
+	/** Se agrega al objeto jugador en el hash de jugadores */
+	game.players[p.id] = new Player(p);
 	
+	/** Se manda al cliente su posicion y su UUID y el estado relevante
+	 * de los demas jugadores en el hash de jugadores. */
 	client.emit('onconnected', { 
 		player: p,
-		players: players
+		players: game.players
 	});
 	
+	/** Se le avisa a los demas jugadores que un nuevo jugador ha ingresado
+	 * al juego */
 	client.broadcast.emit("addPlayer", p);
 	
-	client.on("sendInput", function(playerUUID, eventType, eventData){
-		console.log('inputSended', playerUUID, eventType, eventData);
-		sio.sockets.emit("inputRecivied", playerUUID, eventType, eventData);
+	/** Se asocia a este cliente con un evento capturar sus mensajes */
+	client.on("sendMessage", function(messageID, messageData){
+		console.log("recieveMessage", this.id, messageID, messageData);
+		sio.sockets.emit("recieveMessage", this.id, messageID, messageData);
+		game.handleMessage(this.id, messageID, messageData);
 	});
-})
+	
+	/** Cuando un jugador se desconecta se maneja la desconeccion y se 
+	 * le avisa a los demas de la desconeccion para que la manejen */
+	client.on('disconnect', function(){
+		console.log("disconnect", client.id);
+		sio.sockets.emit('playerDisconnected', client.id);
+		delete game.players[client.id];
+	});
+	
+}); /** End on connection */
 
 
